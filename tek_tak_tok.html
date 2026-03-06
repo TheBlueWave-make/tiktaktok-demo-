@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tek Tak Tok</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #004d8f;
+      --card: #ffffff;
+      --red: #e84040;
+      --blue: #3b6fff;
+      --yellow: #ffd84d;
+      --green: #3ecf8e;
+      --dark: #1a1a2e;
+      --gray: #d6d0c4;
+      --pill-radius: 100px;
+      --shadow: 0 6px 0px rgba(0,0,0,0.18);
+      --shadow-sm: 0 3px 0px rgba(0,0,0,0.12);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background-image:
+        radial-gradient(circle at 15% 15%, rgba(59,111,255,0.07) 0%, transparent 50%),
+        radial-gradient(circle at 85% 80%, rgba(232,64,64,0.07) 0%, transparent 50%);
+    }
+
+    /* ── TITLE ── */
+    .title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .title-badge {
+      font-family: 'Lilita One', cursive;
+      font-size: clamp(28px, 5vw, 44px);
+      color: var(--dark);
+      letter-spacing: -1px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .title-badge .t { color: var(--red); }
+    .title-badge .k { color: var(--blue); }
+    .title-badge .dot { color: var(--yellow); font-size: 0.5em; vertical-align: middle; }
+
+    /* ── SCORE PILLS ── */
+    .scoreboard {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .score-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 22px;
+      border-radius: var(--pill-radius);
+      font-weight: 800;
+      font-size: 15px;
+      border: 3px solid var(--dark);
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.15s, box-shadow 0.15s;
+      min-width: 130px;
+      justify-content: center;
+    }
+
+    .score-pill.x-pill {
+      background: var(--red);
+      color: white;
+    }
+    .score-pill.tie-pill {
+      background: var(--yellow);
+      color: var(--dark);
+    }
+    .score-pill.o-pill {
+      background: var(--blue);
+      color: white;
+    }
+    .score-pill.active {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 0px rgba(0,0,0,0.2);
+    }
+
+    .score-icon {
+      font-size: 20px;
+      line-height: 1;
+    }
+    .score-num {
+      font-size: 22px;
+      font-family: 'Lilita One', cursive;
+    }
+
+    /* ── MAIN CARD ── */
+    .card {
+      background: var(--card);
+      border: 3px solid var(--dark);
+      border-radius: 28px;
+      box-shadow: 8px 8px 0 var(--dark);
+      padding: 28px;
+      width: 100%;
+      max-width: 460px;
+    }
+
+    /* ── TURN INDICATOR ── */
+    .turn-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+
+    .turn-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 20px;
+      border-radius: var(--pill-radius);
+      font-weight: 800;
+      font-size: 15px;
+      border: 2.5px solid var(--dark);
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+    }
+
+    .turn-pill.x-turn { background: var(--red); color: white; }
+    .turn-pill.o-turn { background: var(--blue); color: white; }
+
+    .turn-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #888;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* ── GAME GRID (8×8 graph paper style) ── */
+    .grid-wrapper {
+      position: relative;
+      width: 100%;
+      margin-bottom: 22px;
+      background: #ffffff;
+      border: 2.5px solid #1a1a2e;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 4px 4px 0 #1a1a2e;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      width: 100%;
+      aspect-ratio: 1;
+    }
+
+    .cell {
+      aspect-ratio: 1;
+      background: transparent;
+      border-right: 1px solid rgba(100,120,160,0.4);
+      border-bottom: 1px solid rgba(100,120,160,0.4);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: background 0.12s;
+    }
+
+    .cell:nth-child(8n)   { border-right: none; }
+    .cell:nth-child(n+57) { border-bottom: none; }
+
+    /* Bold vertical axis after col 4 */
+    .cell:nth-child(4),
+    .cell:nth-child(12),
+    .cell:nth-child(20),
+    .cell:nth-child(28),
+    .cell:nth-child(36),
+    .cell:nth-child(44),
+    .cell:nth-child(52),
+    .cell:nth-child(60) {
+      border-right: 2.5px solid #1a1a2e;
+    }
+    /* Bold horizontal axis after row 4 */
+    .cell:nth-child(n+25):nth-child(-n+32) {
+      border-bottom: 2.5px solid #1a1a2e;
+    }
+
+    .cell:hover:not(.taken) {
+      background: rgba(59,111,255,0.12);
+    }
+
+    .cell.taken { cursor: default; }
+    .cell.x-cell { background: rgba(232,64,64,0.10); }
+    .cell.o-cell { background: rgba(59,111,255,0.10); }
+
+    /* Permanent gray tint for cells that are part of a scored pattern */
+    .cell.scored-cell {
+      background: rgba(160,160,160,0.45) !important;
+    }
+    .cell.x-cell.scored-cell {
+      background: rgba(140,140,150,0.50) !important;
+    }
+    .cell.o-cell.scored-cell {
+      background: rgba(140,140,150,0.50) !important;
+    }
+
+    /* Flash animation on score — brief yellow pulse then settles to gray */
+    .cell.win-cell {
+      animation: winPulse 0.5s ease forwards;
+    }
+
+    @keyframes winPulse {
+      0%   { background: rgba(255,216,77,0.70) !important; transform: scale(1.1); }
+      60%  { background: rgba(255,216,77,0.40) !important; transform: scale(1.02); }
+      100% { background: rgba(160,160,160,0.45) !important; transform: scale(1); }
+    }
+
+    .cell svg {
+      width: 70%;
+      height: 70%;
+    }
+
+    /* X mark - hand drawn feel */
+    .x-svg .x-line1, .x-svg .x-line2 {
+      stroke: var(--red);
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-dasharray: 80;
+      stroke-dashoffset: 80;
+      animation: drawLine 0.25s ease forwards;
+    }
+    .x-svg .x-line2 { animation-delay: 0.1s; }
+
+    /* O mark - hand drawn feel */
+    .o-svg circle {
+      stroke: var(--blue);
+      stroke-width: 8;
+      stroke-linecap: round;
+      fill: none;
+      stroke-dasharray: 220;
+      stroke-dashoffset: 220;
+      animation: drawCircle 0.35s ease forwards;
+    }
+
+    @keyframes drawLine {
+      to { stroke-dashoffset: 0; }
+    }
+    @keyframes drawCircle {
+      to { stroke-dashoffset: 0; }
+    }
+
+    /* ── BUTTONS ROW ── */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px 20px;
+      border-radius: var(--pill-radius);
+      border: 2.5px solid var(--dark);
+      font-family: 'Nunito', sans-serif;
+      font-weight: 800;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.18);
+      transition: transform 0.1s, box-shadow 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      letter-spacing: 0.3px;
+    }
+
+    .btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.18);
+    }
+
+    .btn-restart {
+      background: var(--yellow);
+      color: var(--dark);
+    }
+    .btn-new {
+      background: var(--green);
+      color: white;
+    }
+
+    /* ── RESULT OVERLAY ── */
+    .overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0,50,100,0.93);
+      border-radius: 24px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 10;
+      backdrop-filter: blur(2px);
+      animation: fadeIn 0.25s ease forwards;
+    }
+
+    .overlay.show { display: flex; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .result-badge {
+      font-family: 'Lilita One', cursive;
+      font-size: 36px;
+      color: #ffffff;
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    .result-sub {
+      font-size: 15px;
+      font-weight: 700;
+      color: #777;
+    }
+
+    .result-icon {
+      font-size: 64px;
+      animation: bounceIn 0.4s cubic-bezier(.36,.07,.19,.97) both;
+    }
+
+    @keyframes bounceIn {
+      0% { transform: scale(0) rotate(-10deg); }
+      60% { transform: scale(1.2) rotate(3deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+
+    .overlay .btn {
+      font-size: 15px;
+      padding: 12px 32px;
+      min-width: 160px;
+    }
+
+    /* wrap card relative for overlay */
+    .card { position: relative; }
+
+    /* ── MODE TOGGLE ── */
+    .mode-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      justify-content: center;
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .toggle-track {
+      width: 48px;
+      height: 26px;
+      background: var(--gray);
+      border-radius: 100px;
+      border: 2px solid var(--dark);
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle-track.on { background: var(--blue); }
+
+    .toggle-thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 18px;
+      height: 18px;
+      background: white;
+      border-radius: 50%;
+      border: 2px solid var(--dark);
+      transition: transform 0.2s;
+    }
+
+    .toggle-track.on .toggle-thumb { transform: translateX(22px); }
+
+    /* Responsive */
+    @media (max-width: 400px) {
+      .card { padding: 18px; }
+      .score-pill { min-width: 100px; padding: 8px 14px; }
+    }
+    /* ── POINTS CONFIG PILLS ── */
+    .pts-config-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.15);
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 100px;
+      padding: 6px 10px 6px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .pts-controls {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 100px;
+      padding: 2px 4px;
+    }
+    .pts-controls button {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: none;
+      background: #ffd84d;
+      color: #1a1a2e;
+      font-weight: 900;
+      font-size: 14px;
+      cursor: pointer;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.1s;
+    }
+    .pts-controls button:active { transform: scale(0.88); }
+    .pts-val {
+      min-width: 20px;
+      text-align: center;
+      font-family: 'Lilita One', cursive;
+      font-size: 15px;
+      color: #ffd84d;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Title -->
+  <div class="title-wrap">
+    <div class="title-badge">
+      <span class="t">T</span>ek<span class="dot">●</span><span class="t">T</span>ak<span class="dot">●</span><span class="k">T</span>ok
+    </div>
+  </div>
+
+  <!-- Scoreboard -->
+  <div class="scoreboard">
+    <div class="score-pill x-pill active" id="scoreX">
+      <span class="score-icon">✕</span>
+      <span class="score-num" id="numX">0</span>
+    </div>
+    <div class="score-pill tie-pill" id="scoreTie">
+      <span style="font-size:13px;font-weight:800;">pts</span>
+    </div>
+    <div class="score-pill o-pill" id="scoreO">
+      <span class="score-icon">○</span>
+      <span class="score-num" id="numO">0</span>
+    </div>
+  </div>
+
+  <!-- Points config panel -->
+  <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;justify-content:center;align-items:center;">
+    <div class="pts-config-pill">
+      <span>➖ Line of 4</span>
+      <div class="pts-controls">
+        <button onclick="changePts('line',-1)">−</button>
+        <span class="pts-val" id="pts-line">1</span>
+        <button onclick="changePts('line',+1)">+</button>
+      </div>
+    </div>
+    <div class="pts-config-pill">
+      <span>⬛ 2×2 Block</span>
+      <div class="pts-controls">
+        <button onclick="changePts('sq',-1)">−</button>
+        <span class="pts-val" id="pts-sq">1</span>
+        <button onclick="changePts('sq',+1)">+</button>
+      </div>
+    </div>
+    <div class="pts-config-pill">
+      <span>🔲 4 Corners</span>
+      <div class="pts-controls">
+        <button onclick="changePts('corners',-1)">−</button>
+        <span class="pts-val" id="pts-corners">1</span>
+        <button onclick="changePts('corners',+1)">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card -->
+  <div class="card">
+
+    <!-- Mode toggle -->
+    <div class="mode-toggle">
+      <span class="toggle-label">2 Players</span>
+      <div class="toggle-track" id="modeToggle" onclick="toggleMode()">
+        <div class="toggle-thumb"></div>
+      </div>
+      <span class="toggle-label">vs CPU 🤖</span>
+    </div>
+
+    <!-- Turn indicator -->
+    <div class="turn-bar">
+      <span class="turn-label">Current turn</span>
+      <div class="turn-pill x-turn" id="turnPill">
+        <span>✕</span><span>Player X</span>
+      </div>
+    </div>
+
+    <!-- Grid -->
+    <div class="grid-wrapper">
+      <div class="grid" id="grid">
+        <!-- 64 cells generated by JS -->
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="btn-row">
+      <button class="btn btn-restart" onclick="restartRound()">🔄 Restart</button>
+      <button class="btn btn-new" onclick="newGame()">🗑️ New Game</button>
+    </div>
+
+    <!-- Result Overlay -->
+    <div class="overlay" id="overlay">
+      <div class="result-icon" id="resultIcon">🎉</div>
+      <div class="result-badge" id="resultText">Player X Wins!</div>
+      <div class="result-sub" id="resultSub">Great move!</div>
+      <button class="btn btn-restart" onclick="restartRound()" style="flex:none">▶ Play Again</button>
+    </div>
+  </div>
+
+  <script>
+    const N = 8;
+
+    // Configurable point values per pattern type
+    const POINTS = { line: 1, sq: 1, corners: 1 };
+
+    function changePts(type, delta) {
+      POINTS[type] = Math.max(1, POINTS[type] + delta);
+      document.getElementById('pts-' + type).textContent = POINTS[type];
+    }
+    let board2D = Array.from({length: N}, () => Array(N).fill(null));
+    let board   = Array(64).fill(null);
+    let current = 'X';
+    let gameOver = false;
+    let vsAI = false;
+
+    // Per-player scores (points earned this game)
+    let pts = { X: 0, O: 0 };
+
+    // Sets of already-scored pattern keys (to count each once)
+    let scored = { X: new Set(), O: new Set() };
+
+    // Flat indices of cells locked (part of a scored pattern — can't be played again)
+    let lockedCells = new Set();
+
+    function inBounds(r, c) { return r >= 0 && r < N && c >= 0 && c < N; }
+
+    /* ── findLineK: all exact-K windows within any run of >=K for player p ── */
+    function findLineK(p, K) {
+      const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+      const results = [];
+      const seen = new Set();
+      for (let r = 0; r < N; r++) {
+        for (let c = 0; c < N; c++) {
+          if (board2D[r][c] !== p) continue;
+          for (const [dr, dc] of dirs) {
+            // Only start from the beginning of a run
+            const pr = r - dr, pc = c - dc;
+            if (inBounds(pr, pc) && board2D[pr][pc] === p) continue;
+            // Measure full run length
+            let run = 0;
+            while (true) {
+              const rr = r + dr*run, cc = c + dc*run;
+              if (!inBounds(rr, cc) || board2D[rr][cc] !== p) break;
+              run++;
+            }
+            // Every window of exactly K within this run
+            for (let start = 0; start + K <= run; start++) {
+              const cells = [];
+              for (let i = 0; i < K; i++)
+                cells.push([r + dr*(start+i), c + dc*(start+i)]);
+              const key = lineKey(cells);
+              if (!seen.has(key)) { seen.add(key); results.push(cells); }
+            }
+          }
+        }
+      }
+      return results;
+    }
+
+    /* ── Find all 2×2 squares for player p ── */
+    function find2x2(p) {
+      const results = [];
+      for (let r = 0; r < N - 1; r++) {
+        for (let c = 0; c < N - 1; c++) {
+          if (board2D[r][c]===p && board2D[r][c+1]===p &&
+              board2D[r+1][c]===p && board2D[r+1][c+1]===p)
+            results.push([[r,c],[r,c+1],[r+1,c],[r+1,c+1]]);
+        }
+      }
+      return results;
+    }
+
+    /* ── Check if player p owns all 4 corners ── */
+    function checkCorners(p) {
+      const corners = [[0,0],[0,N-1],[N-1,0],[N-1,N-1]];
+      return corners.every(([r,c]) => board2D[r][c] === p) ? corners : null;
+    }
+
+    function lineKey(cells) { return cells.map(([r,c])=>`${r},${c}`).sort().join('|'); }
+
+    /* ── PURE read: collect new pattern keys without mutating scored ── */
+    function gatherNewPatterns(p) {
+      const newKeys = [];
+      for (const line of findLineK(p, 4)) {
+        const key = 'L4:' + lineKey(line);
+        if (!scored[p].has(key)) newKeys.push({ key, cells: line, type: 'line' });
+      }
+      for (const sq of find2x2(p)) {
+        const key = 'SQ:' + lineKey(sq);
+        if (!scored[p].has(key)) newKeys.push({ key, cells: sq, type: 'sq' });
+      }
+      const corners = checkCorners(p);
+      if (corners) {
+        const key = 'CORNERS';
+        if (!scored[p].has(key)) newKeys.push({ key, cells: corners, type: 'corners' });
+      }
+      return newKeys;
+    }
+
+    /* ── COMMIT: called only on a real move — saves keys and scores points ── */
+    function commitPatterns(p) {
+      const newKeys = gatherNewPatterns(p);
+      if (newKeys.length === 0) return 0;
+
+      let totalPts = 0;
+      const highlights = [];
+      for (const { key, cells, type } of newKeys) {
+        scored[p].add(key);
+        totalPts += POINTS[type];
+        highlights.push(...cells.map(([r,c]) => r*N+c));
+      }
+      pts[p] += totalPts;
+      updateScoreDisplay();
+
+      const cellEls = document.querySelectorAll('.cell');
+      const uniqueIdx = [...new Set(highlights)];
+
+      // Lock cells: mark as unplayable in state and visually
+      uniqueIdx.forEach(idx => {
+        lockedCells.add(idx);
+        // Remove from board so they can't be re-targeted by AI either
+        board[idx] = 'LOCKED';
+        const r = Math.floor(idx / N), c = idx % N;
+        board2D[r][c] = 'LOCKED';
+      });
+
+      uniqueIdx.forEach(idx => {
+        cellEls[idx].classList.add('win-cell');
+        setTimeout(() => {
+          cellEls[idx].classList.remove('win-cell');
+          cellEls[idx].classList.add('scored-cell');
+          cellEls[idx].style.cursor = 'not-allowed';
+        }, 500);
+      });
+
+      showToast(p, totalPts);
+      return totalPts;
+    }
+
+    /* ── Build grid ── */
+    (function buildGrid() {
+      const grid = document.getElementById('grid');
+      for (let i = 0; i < 64; i++) {
+        const el = document.createElement('div');
+        el.className = 'cell';
+        el.dataset.i = i;
+        el.addEventListener('click', () => handleClick(i));
+        grid.appendChild(el);
+      }
+    })();
+
+    function renderMark(player) {
+      if (player === 'X') return `
+        <svg class="x-svg" viewBox="0 0 80 80">
+          <line class="x-line1" x1="15" y1="15" x2="65" y2="65"/>
+          <line class="x-line2" x1="65" y1="15" x2="15" y2="65"/>
+        </svg>`;
+      return `
+        <svg viewBox="0 0 80 80">
+          <circle cx="40" cy="40" r="27" style="stroke:#3b6fff;stroke-width:8;fill:none;stroke-dasharray:220;stroke-dashoffset:220;animation:drawCircle 0.35s ease forwards"/>
+        </svg>`;
+    }
+
+    function handleClick(i) {
+      if (gameOver || board[i] || lockedCells.has(i)) return;
+      if (vsAI && current === 'O') return;
+      makeMove(i);
+      if (vsAI && !gameOver) setTimeout(aiMove, 420);
+    }
+
+    function makeMove(i) {
+      const r = Math.floor(i / N), c = i % N;
+      board[i] = current;
+      board2D[r][c] = current;
+
+      const cellEl = document.querySelectorAll('.cell')[i];
+      cellEl.innerHTML = renderMark(current);
+      cellEl.classList.add('taken', current === 'X' ? 'x-cell' : 'o-cell');
+
+      // Score patterns created by this move (commits keys, awards pts, highlights)
+      commitPatterns(current);
+
+      // Check board full → end game (locked cells count as filled)
+      if (board.every(v => v !== null)) {
+        gameOver = true;
+        setTimeout(() => endGame(), 500);
+        return;
+      }
+
+      current = current === 'X' ? 'O' : 'X';
+      updateTurn();
+    }
+
+    function showToast(p, n) {
+      const toast = document.getElementById('toast');
+      toast.textContent = `${p === 'X' ? '✕ Player X' : '○ Player O'} +${n} point${n>1?'s':''}! 🎯`;
+      toast.style.background = p === 'X' ? '#e84040' : '#3b6fff';
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(-50%) translateY(0)';
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-50%) translateY(80px)';
+      }, 1600);
+    }
+
+    function endGame() {
+      const overlay = document.getElementById('overlay');
+      const icon = document.getElementById('resultIcon');
+      const text = document.getElementById('resultText');
+      const sub  = document.getElementById('resultSub');
+
+      if (pts.X > pts.O) {
+        icon.textContent = '🎉';
+        text.textContent = vsAI ? 'You Win!' : 'Player X Wins!';
+        sub.textContent  = `${pts.X} pts vs ${pts.O} pts`;
+      } else if (pts.O > pts.X) {
+        icon.textContent = vsAI ? '🤖' : '🏆';
+        text.textContent = vsAI ? 'CPU Wins!' : 'Player O Wins!';
+        sub.textContent  = `${pts.O} pts vs ${pts.X} pts`;
+      } else {
+        icon.textContent = '🤝';
+        text.textContent = "It's a Draw!";
+        sub.textContent  = `Both scored ${pts.X} pts`;
+      }
+      overlay.classList.add('show');
+    }
+
+    /* ── AI: greedy — pick move that scores the most points ── */
+    function aiMove() {
+      const move = getBestMove();
+      makeMove(move);
+    }
+
+    /* ── AI simulation: pure — does NOT mutate scored ── */
+    function simulateScore(i, p) {
+      if (lockedCells.has(i)) return 0;
+      const r = Math.floor(i/N), c = i%N;
+      board[i] = p; board2D[r][c] = p;
+      const newPatterns = gatherNewPatterns(p);
+      board[i] = null; board2D[r][c] = null;
+      return newPatterns.reduce((sum, { type }) => sum + POINTS[type], 0);
+    }
+
+    function getBestMove() {
+      let best = -1, bestScore = -1;
+      for (let i = 0; i < 64; i++) {
+        if (board[i]) continue; // null only — LOCKED and player marks are skipped
+        const s = simulateScore(i, 'O');
+        if (s > bestScore) { bestScore = s; best = i; }
+      }
+      if (bestScore > 0) return best;
+      let blockBest = -1, blockScore = -1;
+      for (let i = 0; i < 64; i++) {
+        if (board[i]) continue;
+        const s = simulateScore(i, 'X');
+        if (s > blockScore) { blockScore = s; blockBest = i; }
+      }
+      if (blockScore > 0) return blockBest;
+      for (let i = 0; i < 64; i++) {
+        if (board[i] === 'O') {
+          const r = Math.floor(i/N), c = i%N;
+          for (const [dr,dc] of [[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]]) {
+            const nr=r+dr, nc=c+dc;
+            if (inBounds(nr,nc) && !board2D[nr][nc]) return nr*N+nc;
+          }
+        }
+      }
+      if (!board[27]) return 27;
+      return board.findIndex(v => !v);
+    }
+
+    function highlightWin(combo) {
+      const cells = document.querySelectorAll('.cell');
+      combo.forEach(i => cells[i].classList.add('win-cell'));
+    }
+
+    function updateTurn() {
+      const pill = document.getElementById('turnPill');
+      pill.className = 'turn-pill ' + (current === 'X' ? 'x-turn' : 'o-turn');
+      const name = (vsAI && current === 'O') ? '🤖 CPU' : `Player ${current}`;
+      pill.innerHTML = `<span>${current === 'X' ? '✕' : '○'}</span><span>${name}</span>`;
+      document.getElementById('scoreX').classList.toggle('active', current === 'X');
+      document.getElementById('scoreO').classList.toggle('active', current === 'O');
+    }
+
+    function updateScoreDisplay() {
+      document.getElementById('numX').textContent = pts.X;
+      document.getElementById('numO').textContent = pts.O;
+    }
+
+    function restartRound() {
+      board   = Array(64).fill(null);
+      board2D = Array.from({length: N}, () => Array(N).fill(null));
+      pts     = { X: 0, O: 0 };
+      scored  = { X: new Set(), O: new Set() };
+      lockedCells = new Set();
+      current = 'X';
+      gameOver = false;
+      document.querySelectorAll('.cell').forEach(c => { c.innerHTML=''; c.className='cell'; });
+      document.getElementById('overlay').classList.remove('show');
+      updateScoreDisplay();
+      updateTurn();
+    }
+
+    function newGame() { restartRound(); }
+
+    function toggleMode() {
+      vsAI = !vsAI;
+      document.getElementById('modeToggle').classList.toggle('on', vsAI);
+      restartRound();
+    }
+
+    updateTurn();
+  </script>
+  <!-- Toast notification -->
+  <div id="toast" style="
+    position:fixed; bottom:30px; left:50%; transform:translateX(-50%) translateY(80px);
+    padding:10px 22px; border-radius:100px; color:white; font-family:'Nunito',sans-serif;
+    font-weight:800; font-size:14px; border:2.5px solid #1a1a2e;
+    box-shadow:0 4px 0 rgba(0,0,0,0.2); transition:transform 0.3s cubic-bezier(.34,1.56,.64,1), opacity 0.3s;
+    opacity:0; z-index:999; white-space:nowrap;
+  "></div>
+
+</body>
+</html>
